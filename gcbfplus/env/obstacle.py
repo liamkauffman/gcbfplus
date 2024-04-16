@@ -21,6 +21,49 @@ class Obstacle(Protocol):
     def raytracing(self, start: Pos, end: Pos) -> Array:
         pass
 
+class Circle(NamedTuple):
+    type: ObsType
+    center: Pos2d
+    radius: Radius
+
+    @staticmethod
+    def create(center: Pos2d, radius: Radius) -> "Circle":
+        return Circle(SPHERE, center, radius)
+
+    #function to determine if given point is inside the circle
+    def inside(self, point: Pos2d, r: Radius = 0.) -> BoolScalar:
+        dist_squared = (point[0] - self.center[0]) ** 2 + (point[1] - self.center[1]) ** 2
+        return dist_squared <= (self.radius + r) ** 2
+
+    def raytracing(self, start: Pos2d, end: Pos2d) -> Array:
+        # Equation of the line segment as parametric line: p = start + t * (end - start)
+        # Equation of the circle: (x - h)^2 + (y - k)^2 = r^2
+        # Center (h, k) and radius r of the circle
+        h, k, r = self.center[0], self.center[1], self.radius
+        dx, dy = end[0] - start[0], end[1] - start[1]
+
+        # Coefficients for the quadratic equation At^2 + Bt + C = 0
+        A = dx ** 2 + dy ** 2
+        B = 2 * (dx * (start[0] - h) + dy * (start[1] - k))
+        C = (start[0] - h) ** 2 + (start[1] - k) ** 2 - r ** 2
+
+        # Discriminant
+        discriminant = B ** 2 - 4 * A * C
+        if discriminant < 0:
+            return jnp.array([1e6])  # No intersection
+
+        sqrt_discriminant = jnp.sqrt(discriminant)
+        t1 = (-B - sqrt_discriminant) / (2 * A)
+        t2 = (-B + sqrt_discriminant) / (2 * A)
+
+        # We need to find where the line segment intersects the circle, if it does within segment bounds
+        valid_t1 = (t1 >= 0) & (t1 <= 1)
+        valid_t2 = (t2 >= 0) & (t2 <= 1)
+        valid_ts = jnp.where(valid_t1, t1, jnp.where(valid_t2, t2, 1e6))
+
+        # Return the smallest t that is within the line segment
+        return jnp.min(valid_ts)
+    
 
 class Rectangle(NamedTuple):
     type: ObsType
@@ -62,6 +105,7 @@ class Rectangle(NamedTuple):
         is_in = jnp.logical_or(jnp.logical_or(is_in_down, is_in_up), jnp.logical_and(is_out_corner, is_in_circle))
         return is_in
 
+    #Perform raytracing to calculate intersections with a line segment
     def raytracing(self, start: Pos2d, end: Pos2d) -> Array:
         # beam
         x1 = start[0]
