@@ -11,7 +11,7 @@ from ..utils.graph import EdgeBlock, GetGraph, GraphsTuple
 from ..utils.typing import Action, Array, Cost, Done, Info, Pos2d, Reward, State, AgentState
 from ..utils.utils import merge01, jax_vmap
 from .base import MultiAgentEnv, RolloutResult
-from .obstacle import Obstacle, Rectangle
+from .obstacle import Obstacle, Rectangle, Circle
 from .plot import render_video
 from .utils import get_lidar, inside_obstacles, lqr, get_node_goal_rng
 
@@ -57,6 +57,7 @@ class SingleIntegrator(MultiAgentEnv):
         self._R = np.eye(self.action_dim)
         self._K = jnp.array(lqr(self._A, self._B, self._Q, self._R))
         self.create_obstacles = jax_vmap(Rectangle.create)
+        #self.create_obstacles = jax_vmap(Circle.create)
 
     @property
     def state_dim(self) -> int:
