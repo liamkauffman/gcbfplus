@@ -7,6 +7,7 @@ from ..utils.typing import Pos2d, Pos3d, Pos
 from ..utils.typing import Array, ObsType, ObsWidth, ObsHeight, ObsTheta, Radius, ObsLength, ObsQuaternion, BoolScalar
 
 RECTANGLE = jnp.zeros(1)
+CIRCLE=jnp.zeros(1)
 CUBOID = jnp.ones(1)
 SPHERE = jnp.ones(1) * 2
 
@@ -42,27 +43,26 @@ class Circle(NamedTuple):
         h, k, r = self.center[0], self.center[1], self.radius
         dx, dy = end[0] - start[0], end[1] - start[1]
 
-        # Coefficients for the quadratic equation At^2 + Bt + C = 0
         A = dx ** 2 + dy ** 2
         B = 2 * (dx * (start[0] - h) + dy * (start[1] - k))
         C = (start[0] - h) ** 2 + (start[1] - k) ** 2 - r ** 2
 
-        # Discriminant
         discriminant = B ** 2 - 4 * A * C
-        if discriminant < 0:
-            return jnp.array([1e6])  # No intersection
+        no_intersection = jnp.array([1e6])
 
-        sqrt_discriminant = jnp.sqrt(discriminant)
-        t1 = (-B - sqrt_discriminant) / (2 * A)
-        t2 = (-B + sqrt_discriminant) / (2 * A)
+        # Use jnp.where to handle the conditional
+        discriminant_ge_0 = discriminant >= 0
+        sqrt_discriminant = jnp.sqrt(discriminant) * discriminant_ge_0  # Only compute sqrt if discriminant >= 0
 
-        # We need to find where the line segment intersects the circle, if it does within segment bounds
-        valid_t1 = (t1 >= 0) & (t1 <= 1)
-        valid_t2 = (t2 >= 0) & (t2 <= 1)
+        t1 = (-B - sqrt_discriminant) / (2 * A) * discriminant_ge_0
+        t2 = (-B + sqrt_discriminant) / (2 * A) * discriminant_ge_0
+
+        valid_t1 = (t1 >= 0) & (t1 <= 1) & discriminant_ge_0
+        valid_t2 = (t2 >= 0) & (t2 <= 1) & discriminant_ge_0
+
         valid_ts = jnp.where(valid_t1, t1, jnp.where(valid_t2, t2, 1e6))
 
-        # Return the smallest t that is within the line segment
-        return jnp.min(valid_ts)
+        return jnp.min(valid_ts) * discriminant_ge_0 + no_intersection * (~discriminant_ge_0)
     
 
 class Rectangle(NamedTuple):

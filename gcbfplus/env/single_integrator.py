@@ -56,8 +56,9 @@ class SingleIntegrator(MultiAgentEnv):
         self._Q = np.eye(self.state_dim) * 2
         self._R = np.eye(self.action_dim)
         self._K = jnp.array(lqr(self._A, self._B, self._Q, self._R))
-        self.create_obstacles = jax_vmap(Rectangle.create)
-        #self.create_obstacles = jax_vmap(Circle.create)
+        #self.create_obstacles = jax_vmap(Rectangle.create)
+        self.create_obstacles = jax.vmap(Circle.create, in_axes=(0, 0))  # map both center and radius inputs
+
 
     @property
     def state_dim(self) -> int:
@@ -92,7 +93,14 @@ class SingleIntegrator(MultiAgentEnv):
         )
         theta_key, key = jr.split(key, 2)
         obs_theta = jr.uniform(theta_key, (n_rng_obs,), minval=0, maxval=2 * np.pi)
-        obstacles = self.create_obstacles(obs_pos, obs_len[:, 0], obs_len[:, 1], obs_theta)
+
+
+        # Assuming radius is defined by the first column of obs_len
+        radius = obs_len[:, 0]  # or any appropriate calculation for radius
+        obstacles = self.create_obstacles(obs_pos, radius)
+
+
+        #obstacles = self.create_obstacles(obs_pos, obs_len[:, 0], obs_len[:, 1], obs_theta)
 
         # randomly generate agent and goal
         states, goals = get_node_goal_rng(

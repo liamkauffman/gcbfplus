@@ -10,6 +10,7 @@ from matplotlib.collections import LineCollection, PatchCollection
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.pyplot import Axes
 from matplotlib.patches import Polygon
+from matplotlib.patches import Circle as MplCircle
 from mpl_toolkits.mplot3d import proj3d, Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection, Line3DCollection
 from typing import List, Optional, Union
@@ -17,7 +18,7 @@ from typing import List, Optional, Union
 from ..trainer.utils import centered_norm
 from ..utils.typing import EdgeIndex, Pos2d, Pos3d, Array
 from ..utils.utils import merge01, tree_index, MutablePatchCollection, save_anim
-from .obstacle import Cuboid, Sphere, Obstacle, Rectangle
+from .obstacle import Cuboid, Sphere, Obstacle, Rectangle, Circle
 from .base import RolloutResult
 
 
@@ -169,6 +170,30 @@ def get_sphere_collection(
 
     return sphere_col
 
+def get_circle_collection(
+        obstacle: Circle, alpha: float = 0.8, facecolor: str = 'r', edgecolor: str = 'k', linewidth: float = 1.0
+) -> PatchCollection:
+    """
+    Generate a matplotlib circle patch for visualizing a 2D circle obstacle.
+
+    Args:
+    obstacle (Circle): An instance of the Circle class, containing circle data.
+    alpha (float): The transparency level of the circle face.
+    facecolor (str): The color of the circle face.
+    edgecolor (str): The color of the circle edge.
+    linewidth (float): The width of the circle edge.
+
+    Returns:
+    PatchCollection: A collection containing the matplotlib circle patch.
+    """
+    # Generate a matplotlib circle patch for the obstacle
+    circle = MplCircle((obstacle.center[0], obstacle.center[1]), radius=obstacle.radius,
+                       alpha=alpha, facecolor=facecolor, edgecolor=edgecolor, linewidth=linewidth)
+
+    # Create a collection with the specified visual properties and add the circle
+    circle_collection = PatchCollection([circle], match_original=True)
+
+    return circle_collection
 
 def get_obs_collection(
         obstacles: Obstacle, color: str, alpha: float
@@ -181,6 +206,9 @@ def get_obs_collection(
         obs_col = get_cuboid_collection(obstacles, alpha=alpha, facecolor=color)
     elif isinstance(obstacles, Sphere):
         obs_col = get_sphere_collection(obstacles, alpha=alpha, facecolor=color)
+
+    elif isinstance(obstacles, Circle):
+        obs_col = get_circle_collection(obstacles, alpha=alpha, facecolor=color)
     else:
         raise NotImplementedError
     return obs_col

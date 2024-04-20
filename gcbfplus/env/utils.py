@@ -10,7 +10,7 @@ from jax.lax import while_loop
 
 from ..utils.typing import Array, Radius, BoolScalar, Pos, State, Action, PRNGKey
 from ..utils.utils import merge01
-from .obstacle import Obstacle, Rectangle, Cuboid, Sphere
+from .obstacle import Obstacle, Rectangle, Cuboid, Sphere, Circle
 
 
 def RK4_step(x_dot_fn: Callable, x: State, u: Action, dt: float) -> Array:
@@ -72,6 +72,13 @@ def get_lidar(start_point: Pos, obstacles: Obstacle, num_beams: int, sense_range
         ends = jnp.concatenate([ends,
                                 start_point[None, :] + jnp.array([[0., 0., sense_range]]),
                                 start_point[None, :] + jnp.array([[0., 0., -sense_range]])], axis=0)
+    elif isinstance(obstacles, Circle):
+        thetas = jnp.linspace(-np.pi, np.pi, num_beams)
+        starts = start_point[None, :].repeat(num_beams, axis=0)
+        ends = jnp.stack([
+            starts[..., 0] + jnp.cos(thetas) * sense_range,
+            starts[..., 1] + jnp.sin(thetas) * sense_range
+        ], axis=-1)
     else:
         raise NotImplementedError
     sensor_data = raytracing(starts, ends, obstacles, max_returns)
